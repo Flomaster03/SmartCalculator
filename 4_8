@@ -1,0 +1,45 @@
+fun main() {
+    input()
+}
+
+fun input() {
+    while (true) {
+        val input = readln()
+        when {
+            input == "/exit" -> {
+                println("Bye!")
+                break
+            }
+            input == "/help" -> {
+                println("The program calculates the sum of numbers")
+                continue
+            }
+            input.isEmpty() -> continue
+            input.matches("-?\\d+".toRegex()) -> println(input)
+            else -> handleInputString(input)
+        }
+    }
+}
+
+fun String.checkIsNumber(): Boolean {
+    for (i in this.split(" ")) {
+        if (!i.matches("-?\\d+".toRegex())) return false
+    }
+    return true
+}
+
+fun handleInputString(input: String) {
+    val numbers = mutableListOf<Int>()
+    val actions = mutableListOf<String>()
+    val str = input.split("\\s+".toRegex())
+    for (s in str) {
+        when {
+            s.matches("-?\\d+".toRegex()) -> numbers.add(s.toInt())
+            s.contains('-') || s.contains('+') -> actions.add(if (s.count { it == '-' } % 2 == 0) "+" else "-")
+        }
+    }
+    val result = numbers.reduceIndexed { index, acc, i -> acc.plusOrMinus(i, actions[index - 1]) }
+    println(result)
+}
+
+fun Int.plusOrMinus(i: Int, s: String) = if (s == "+") this + i else this - i
