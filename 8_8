@@ -1,0 +1,140 @@
+package calculator
+
+fun main() {
+    input()
+}
+
+fun input() {
+    while (true) {
+        val input = readln()
+        when {
+            input == "/exit" -> break
+            input.isEmpty() -> continue
+            input.matches("^/.*".toRegex()) -> handleBackslash(input)
+            input.matches("-?\\+?\\d+".toRegex()) -> handleSingleDigit(input)
+            input.contains('=') -> handleVariables(input)
+            input.matches("""(\(*((-?\d+)|([A-Za-z]+))\s*(([+-]+)|([*/]))\s*\(*((-?\d+)|([A-Za-z]+))\)*)((\s*(([+-]+)|([*/]))\s*\(*((-?\d+)|([A-Za-z]+))\)*)+\)*)?""".toRegex()) -> handleInputString(input)
+            input.contains("[A-Za-z]".toRegex()) -> handleSingleVariable(input)
+            else -> println("Invalid expression")
+        }
+    }
+    println("Bye!")
+}
+
+fun handleBackslash(input: String) = println(if (input == "/help") "The program calculates the sum of numbers" else "Unknown command")
+
+fun handleSingleDigit(digit: String) = println(
+    if (digit.matches("-?\\d+".toRegex())) digit else "\\d+".toRegex().find(digit)?.value.toString()
+)
+
+fun handleInputString(str: String) {
+    var input = str
+    if (input.contains("[()]".toRegex()) && (input.count { it == '(' } != input.count { it == ')' })) {
+        println("Invalid expression")
+        return
+    }
+    val numbers = mutableListOf<String>()
+    val actions = mutableListOf<String>()
+    val patterns =
+        arrayOf("(\\(*\\d+\\)*)|(\\(*[A-Za-z]+\\)*)", "\\s*([*/]|[+-]+)\\s*")
+    loop@ for (i in patterns.indices) {
+        while (true) {
+            if (input.isEmpty()) break@loop
+            val pattern = patterns[i].toRegex().find(input) ?: break
+            when {
+                pattern.value.matches("\\(*[A-Za-z]+\\)*".toRegex()) -> if (Variables.variables.containsKey(pattern.value)) numbers.add(
+                    Variables.variables[pattern.value].toString()
+                ) else {
+                    println("Invalid identifier")
+                    return
+                }
+
+                pattern.value.matches("\\(*\\d+\\)*".toRegex()) -> numbers.add(pattern.value)
+                pattern.value.matches("\\s*[*/+-]\\s*".toRegex()) -> actions.add(" ${pattern.value.trim()} ")
+                pattern.value.matches("\\s*-{2,}\\s*".toRegex()) -> actions.add(if (pattern.value.count { it == '-' } % 2 == 0) " + " else " - ")
+                else -> actions.add(" + ")
+            }
+            input = input.replaceFirst(pattern.value, "")
+        }
+    }
+    Patterns.finishStr = buildString {
+        for (i in actions.indices) {
+            append(numbers[i])
+            append(actions[i])
+        }
+        append(numbers.last())
+    }
+    println(replaceParenthesisPattern(Patterns.patterns[0]))
+}
+
+fun handleVariables(input: String) {
+    val str = input.split("\\s*=\\s*".toRegex()).map { it.trim() }
+    when {
+        str[0].contains("[^A-Za-z]".toRegex()) -> println("Invalid identifier")
+        str.size == 2 && str[1].matches("[A-Za-z]+(\\s*)?".toRegex()) -> if (Variables.variables.containsKey(str[1])) Variables.variables[str[0]] =
+            Variables.variables[str[1]]!! else println("Unknown variable")
+        str.size > 2 || !str[1].matches("-?(([A-Za-z]+)|(\\d+))".toRegex()) -> println("Invalid assignment")
+        else -> Variables.variables[str[0]] = str[1]
+    }
+}
+
+fun handleSingleVariable(input: String) {
+    when {
+        input.trim()
+            .contains("[^A-Za-z]".toRegex()) -> println("Invalid identifier")
+        Variables.variables.contains(input.trim()) -> println(Variables.variables[input.trim()])
+        else -> println("Unknown variable")
+    }
+}
+
+fun replaceParenthesisPattern(pattern: Regex): String {
+    while (true) {
+        val valueOfPattern = pattern.find(Patterns.finishStr)?.value
+        when {
+            Patterns.finishStr.matches("-?\\d+".toRegex()) -> return Patterns.finishStr
+            valueOfPattern.isNullOrEmpty() -> {
+                Patterns.str = Patterns.finishStr
+                Patterns.finishStr = replaceActionPattern(Patterns.patterns[1])
+            }
+
+            else -> {
+                Patterns.str = valueOfPattern.replace("[()]+".toRegex(), "")
+                Patterns.finishStr =
+                    Patterns.finishStr.replaceFirst(pattern, replaceActionPattern(Patterns.patterns[1]))
+            }
+        }
+    }
+}
+
+fun replaceActionPattern(pattern: Regex): String {
+    while (true) {
+        val valueOfPattern = pattern.find(Patterns.str)?.value
+        when {
+            Patterns.str.matches("-?\\d+".toRegex()) -> return Patterns.str
+            valueOfPattern.isNullOrEmpty() -> replaceActionPattern(Patterns.patterns[Patterns.patterns.indexOf(pattern) + 1])
+            else -> {
+                Patterns.str = Patterns.str.replaceFirst(pattern, valueOfPattern.convertActionToNumber())
+            }
+        }
+    }
+}
+
+fun String.convertActionToNumber(): String {
+    val str = this.split(" ")
+    return when (str[1]) {
+        "+" -> (str[0].toBigInteger() + str[2].toBigInteger()).toString()
+        "-" -> (str[0].toBigInteger() - str[2].toBigInteger()).toString()
+        "*" -> (str[0].toBigInteger() * str[2].toBigInteger()).toString()
+        else -> (str[0].toBigInteger() / str[2].toBigInteger()).toString()
+    }
+}
+
+object Variables {
+    val variables = mutableMapOf<String, String>()
+}
+
+object Patterns {
+    val patterns = arrayOf("""\([^()]+\)""".toRegex(), "-?\\d+ [*/] -?\\d+".toRegex(), "-?\\d+ [+-] -?\\d+".toRegex())
+    var finishStr = ""
+    var str = ""
+}
