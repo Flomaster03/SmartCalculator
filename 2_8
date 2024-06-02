@@ -1,0 +1,18 @@
+fun main() {
+    input()
+}
+
+fun input() {
+    while (true) {
+        val input = readln()
+        when {
+            input == "/exit" -> {
+                println("Bye!")
+                break
+            }
+            input.isEmpty() -> continue
+            input.matches("-?\\d+ -?\\d+".toRegex()) -> println(input.split(" ").sumOf { it.toInt() } )
+            else -> println(input.toInt())
+        }
+    }
+}
