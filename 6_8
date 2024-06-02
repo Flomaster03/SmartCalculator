@@ -1,0 +1,73 @@
+fun main() {
+    input()
+}
+
+fun input() {
+    while (true) {
+        val input = readln()
+        when {
+            input == "/exit" -> break
+            input.isEmpty() -> continue
+            input.matches("^/.*".toRegex()) -> handleBackslash(input) //содержит бекслэш вначале - это команда
+            input.matches("-?\\+?\\d+".toRegex()) -> handleSingleDigit(input) //это цифра, может быть с минусом или плюсом перед ней
+            input.matches("(((-?\\d+)|([A-Za-z]+))\\s+[+-]+\\s+)+((-?\\d+)|([A-Za-z]+))".toRegex()) -> handleInputString(input) //строка для обработки ВСТАВИТЬ ПЕРЕМЕННЫЕ!!
+            input.contains('=') -> handleVariables(input) //присваивание переменной числа
+            input.contains("[A-Za-z]".toRegex()) -> handleSingleVariable(input) //обработка одиночной переменной
+            else -> println("Invalid expression")
+        }
+    }
+    println("Bye!")
+}
+
+fun handleBackslash(input: String) =
+    println(if (input == "/help") "The program calculates the sum of numbers" else "Unknown command")
+
+fun handleSingleDigit(digit: String) = println(
+    if (digit.matches("-?\\d+".toRegex())) digit else "\\d+".toRegex().find(digit)?.value.toString()
+)
+
+fun handleInputString(input: String) {
+    val numbers = mutableListOf<Int>()
+    val actions = mutableListOf<String>()
+    val str = input.split("\\s+".toRegex())
+    for (s in str) {
+        when {
+            s.matches("-?\\d+".toRegex()) -> numbers.add(s.toInt())
+            s.contains('-') || s.contains('+') -> actions.add(if (s.count { it == '-' } % 2 == 0) "+" else "-")
+            s.matches("[A-Za-z]+".toRegex()) -> if (Variables.variables.contains(s)) numbers.add(Variables.variables[s]!!) else {
+                println("Unknown variable")
+                continue
+            }
+        }
+    }
+    val result = numbers.reduceIndexed { index, acc, i -> acc.plusOrMinus(i, actions[index - 1]) }
+    println(result)
+}
+
+fun Int.plusOrMinus(i: Int, s: String) = if (s == "+") this + i else this - i
+
+
+fun handleVariables(input: String) {
+    val str = input.split("\\s*=\\s*".toRegex()).map {it.trim() }
+    when {
+        str[0].contains("[^A-Za-z]".toRegex()) -> println("Invalid identifier") //переменная содержит что-либо кроме букв
+        str.size == 2 && str[1].matches("[A-Za-z]+(\\s*)?".toRegex()) -> if (Variables.variables.containsKey(str[1])) Variables.variables[str[0]] =
+            Variables.variables[str[1]]!! else println("Unknown variable") // инициализация является буквенным набором;
+        // если он содержится в карте, то переменной присваивается значение переменной из инициализации. Если не содержится, то печать об ошибке
+        str.size > 2 || str[1].contains("\\D".toRegex()) -> println("Invalid assignment") //инициализация содержит что-либо кроме цифр
+        else -> Variables.variables[str[0]] =
+            str[1].toInt() //если все в порядке, то переменная и ее значение вносятся в карту переменных
+    }
+}
+
+fun handleSingleVariable(input: String) {
+    when {
+        input.contains("[^A-Za-z]".toRegex()) -> println("Invalid identifier") //переменная содержит что-либо кроме букв
+        Variables.variables.contains(input) -> println(Variables.variables[input]) //если переменная есть в карте, то распечатывается ее значени
+        else -> println("Unknown variable")
+    }
+}
+
+object Variables {
+    val variables = mutableMapOf<String, Int>()
+}
