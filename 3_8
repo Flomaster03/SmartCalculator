@@ -1,0 +1,29 @@
+fun main() {
+    input()
+}
+
+fun input() {
+    while (true) {
+        val input = readln()
+        when {
+            input == "/exit" -> {
+                println("Bye!")
+                break
+            }
+            input == "/help" -> {
+                println("The program calculates the sum of numbers")
+                continue
+            }
+            input.isEmpty() -> continue
+            input.checkIsNumber() -> println(input.split(" ").sumOf { it.toInt() } )
+            else -> println(input.toInt())
+        }
+    }
+}
+
+fun String.checkIsNumber(): Boolean {
+    for (i in this.split(" ")) {
+        if (!i.matches("-?\\d+".toRegex())) return false
+    }
+    return true
+}
